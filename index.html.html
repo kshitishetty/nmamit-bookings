@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>NMAMIT Bookings</title>
+<style>
+:root{--bg:#eef3f6;--card:#fff;--tx:#10222b;--mu:#5d7480;--pr:#0f766e;--prt:#fff;--soft:#d9f0ec;--ok:#15803d;--wa:#b45309;--bad:#b91c1c;--bd:#d6e0e6;--r:18px}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1519;--card:#13232a;--tx:#e8f2f5;--mu:#8fa8b3;--pr:#2dd4bf;--prt:#032b27;--soft:#143a38;--ok:#4ade80;--wa:#fbbf24;--bad:#f87171;--bd:#233941}}
+*{box-sizing:border-box;margin:0}
+body{font:16px/1.4 "Trebuchet MS",system-ui,sans-serif;background:var(--bg);color:var(--tx);height:100dvh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+header{order:0;display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+header h1{font:700 20px/1.1 Georgia,serif}header small{display:block;color:var(--mu);font-size:12px;font-family:system-ui}
+main{order:2;flex:1;overflow:auto;padding:4px 14px 110px}
+nav{order:3;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--bd)}
+html[data-nav=top] nav{order:1;border-top:0;border-bottom:1px solid var(--bd);padding-bottom:8px}
+html[data-hand=left] nav{flex-direction:row-reverse}
+nav button{flex:1;min-height:56px;border:0;border-radius:14px;background:none;color:var(--mu);font:600 12px system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button span{font-size:20px}nav button.on{background:var(--soft);color:var(--pr)}
+.fab{position:fixed;z-index:5;min-width:60px;height:60px;border-radius:30px;border:0;background:var(--pr);color:var(--prt);font:700 17px system-ui;padding:0 22px;box-shadow:0 6px 18px #0004}
+html[data-hand=right] .fab{right:16px}html[data-hand=left] .fab{left:16px}
+html[data-nav=bottom] .fab{bottom:calc(86px + env(safe-area-inset-bottom))}html[data-nav=top] .fab{bottom:calc(20px + env(safe-area-inset-bottom))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin:10px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mu{color:var(--mu);font-size:14px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:20px;padding:9px 14px;font:600 14px system-ui}
+.chip.on{background:var(--pr);color:var(--prt);border-color:var(--pr)}
+.mon{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+.mon b{font:700 19px Georgia,serif}.mon button{width:48px;height:48px;border-radius:24px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.grid i{font:600 12px system-ui;color:var(--mu);text-align:center;font-style:normal;padding:4px 0}
+.day{aspect-ratio:1/1.05;border:1px solid transparent;border-radius:14px;background:var(--card);color:var(--tx);font:600 15px system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.day.out{visibility:hidden}.day.today{border-color:var(--pr)}.day.sel{background:var(--pr);color:var(--prt)}
+.dots{display:flex;gap:3px;height:7px}.dots u{width:7px;height:7px;border-radius:50%;background:var(--ok)}.dots u.p{background:none;border:2px solid var(--wa)}
+.day.sel .dots u{background:var(--prt);border-color:var(--prt)}
+.pill{font:700 12px system-ui;padding:4px 10px;border-radius:12px;white-space:nowrap}
+.pill.approved{background:#15803d22;color:var(--ok)}.pill.pending{background:#b4530922;color:var(--wa)}.pill.blocked{background:#b91c1c22;color:var(--bad)}
+.btn{min-height:50px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:700 15px system-ui;padding:0 18px}
+.btn.pr{background:var(--pr);color:var(--prt);border-color:var(--pr)}.btn.bad{color:var(--bad)}.btn.sm{min-height:44px;flex:1}
+.acts{display:flex;gap:8px;margin-top:10px}
+label{display:block;font:600 14px system-ui;margin:12px 0 4px}
+input,select{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:0 12px;font:16px system-ui}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet{position:fixed;inset:0;z-index:20;background:#0008;display:flex;align-items:flex-end}
+.sheet>div{background:var(--card);width:100%;max-height:92dvh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom))}
+.sheet .btns{display:flex;gap:10px;margin-top:18px}
+html[data-hand=left] .sheet .btns{flex-direction:row-reverse}.sheet .btns .btn{flex:1}
+.seg{display:flex;gap:6px;background:var(--bg);padding:5px;border-radius:14px;margin:8px 0}
+.seg button{flex:1;min-height:46px;border:0;border-radius:10px;background:none;color:var(--mu);font:700 14px system-ui}.seg button.on{background:var(--card);color:var(--pr)}
+.login{max-width:420px;margin:0 auto;padding:36px 20px}.login h1{font:700 30px/1.1 Georgia,serif;margin-bottom:6px}
+h2{font:700 18px Georgia,serif;margin:18px 0 4px}
+#toast{position:fixed;left:50%;top:70px;transform:translate(-50%,-20px);background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:14px;opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90%;font:600 14px system-ui}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+:focus-visible{outline:3px solid var(--pr);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div>
+<script>
+// >>> PASTE YOUR APPS SCRIPT WEB APP URL HERE (ends with /exec) <<<
+const API_URL = 'https://script.google.com/macros/s/AKfycbxFmJKCx4use7JeTylN_kJhxFBbqbc2zJnyPNdnXIpEV6_ybOSkkpX_iKYtq778KVs/exec';
+
+const $ = s => document.querySelector(s);
+const P = Object.assign({nav:'bottom',hand:'right'}, JSON.parse(localStorage.getItem('prefs')||'{}'));
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const pd = s => { const [y,m,d]=s.split('-'); return new Date(y,m-1,d); };
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S = {token:localStorage.getItem('tok')||'',role:'',email:'',view:'cal',m:new Date(),sel:iso(new Date()),f:'all',venues:[],bk:[],tab:'user',step:'mail',mail:''};
+S.m.setDate(1);
+
+function toast(m){const t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',3000)}
+async function api(action,d={}){
+  if(API_URL.startsWith('PASTE')) throw new Error('Set API_URL in index.html first');
+  const r = await fetch(API_URL,{method:'POST',body:JSON.stringify({action,token:S.token,...d})});
+  const j = await r.json();
+  if(j.error){ if(j.error==='auth'){logout(true);throw new Error('Session ended. Sign in again.')} throw new Error(j.error) }
+  return j;
+}
+function apply(){document.documentElement.dataset.nav=P.nav;document.documentElement.dataset.hand=P.hand}
+function setPref(k,v){P[k]=v;localStorage.setItem('prefs',JSON.stringify(P));render()}
+function logout(silent){S.token='';localStorage.removeItem('tok');S.step='mail';render()}
+const vn = id => (S.venues.find(v=>v.id===id)||{name:'Removed venue'}).name;
+
+async function load(){
+  const j = await api('list');
+  Object.assign(S,{venues:j.venues,bk:j.bookings,role:j.role,email:j.email});
+  render();
+}
+
+// ---------- views ----------
+function loginHTML(){
+  const adm = S.tab==='admin';
+  let body;
+  if(adm) body = `<label>Username</label><input id="au" autocomplete="username"><label>Password</label><input id="ap" type="password" autocomplete="current-password"><div class="acts"><button class="btn pr sm" data-a="adminLogin">Sign in as admin</button></div>`;
+  else if(S.step==='mail') body = `<label>Your college email</label><input id="em" type="email" inputmode="email" autocomplete="email" placeholder="name@nmamit.in" value="${esc(S.mail)}"><p class="mu" style="margin-top:8px">Works with @nmamit.in and @nitte.in. We email you a 6-digit code.</p><div class="acts"><button class="btn pr sm" data-a="sendCode">Send code</button></div>`;
+  else body = `<p class="mu">Code sent to <b>${esc(S.mail)}</b>. Check your inbox and spam folder.</p><label>6-digit code</label><input id="cd" inputmode="numeric" maxlength="6" autocomplete="one-time-code"><div class="acts"><button class="btn sm" data-a="back">Change email</button><button class="btn pr sm" data-a="verify">Sign in</button></div>`;
+  return `<div class="login" style="overflow:auto"><h1>NMAMIT<br>Venue Bookings</h1><p class="mu">See what is free. Request a hall.</p>
+  <div class="seg"><button class="${adm?'':'on'}" data-a="tab" data-id="user">Students &amp; staff</button><button class="${adm?'on':''}" data-a="tab" data-id="admin">Admin</button></div>${body}</div>`;
+}
+function bookingCard(b,adm){
+  const can = adm || b.mine;
+  return `<div class="card"><div class="row"><b>${esc(b.title)}</b><span class="pill ${b.status}">${b.status}</span></div>
+  <div class="mu">${esc(vn(b.venueId))}</div><div class="mu">${b.date}, ${b.start} to ${b.end} &middot; ${esc(b.by)}</div>
+  ${adm&&b.status==='pending'?`<div class="acts"><button class="btn pr sm" data-a="decide" data-id="${b.id}" data-s="approved">Accept</button><button class="btn bad sm" data-a="decide" data-id="${b.id}" data-s="blocked">Block</button></div>`:''}
+  ${adm&&b.status!=='pending'?`<div class="acts"><button class="btn sm" data-a="decide" data-id="${b.id}" data-s="${b.status==='approved'?'blocked':'approved'}">${b.status==='approved'?'Block':'Accept'} instead</button><button class="btn bad sm" data-a="cancel" data-id="${b.id}">Delete</button></div>`:''}
+  ${!adm&&can?`<div class="acts"><button class="btn bad sm" data-a="cancel" data-id="${b.id}">${b.status==='blocked'?'Remove':'Cancel request'}</button></div>`:''}</div>`;
+}
+function calView(){
+  const y=S.m.getFullYear(),mo=S.m.getMonth(),first=new Date(y,mo,1).getDay(),n=new Date(y,mo+1,0).getDate(),today=iso(new Date());
+  const vis = S.bk.filter(b=>b.status!=='blocked'&&(S.f==='all'||b.venueId===S.f));
+  let g='';for(const d of 'SMTWTFS')g+=`<i>${d}</i>`;
+  for(let i=0;i<first;i++)g+='<button class="day out"></button>';
+  for(let d=1;d<=n;d++){const k=y+'-'+pad(mo+1)+'-'+pad(d),ev=vis.filter(b=>b.date===k).slice(0,3);
+    g+=`<button class="day ${k===today?'today':''} ${k===S.sel?'sel':''}" data-a="day" data-id="${k}">${d}<span class="dots">${ev.map(b=>`<u class="${b.status==='pending'?'p':''}"></u>`).join('')}</span></button>`}
+  const day = vis.filter(b=>b.date===S.sel).sort((a,b)=>a.start<b.start?-1:1);
+  return `<div class="chips"><button class="chip ${S.f==='all'?'on':''}" data-a="filter" data-id="all">All venues</button>${S.venues.map(v=>`<button class="chip ${S.f===v.id?'on':''}" data-a="filter" data-id="${v.id}">${esc(v.name)}</button>`).join('')}</div>
+  <div class="mon"><button data-a="mon" data-id="-1" aria-label="Previous month">&#8249;</button><b>${S.m.toLocaleString('en',{month:'long',year:'numeric'})}</b><button data-a="mon" data-id="1" aria-label="Next month">&#8250;</button></div>
+  <div class="grid">${g}</div>
+  <h2>${pd(S.sel).toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long'})}</h2>
+  <p class="mu">Filled dot: confirmed. Ring: waiting for admin.</p>
+  ${day.length?day.map(b=>bookingCard(b,false).replace(/<div class="acts">.*?<\/div>/s,'')).join(''):`<div class="card mu">Nothing booked${S.f==='all'?'':' here'} on this day. Tap Book to request it.</div>`}`;
+}
+function mineView(){
+  const m = S.bk.filter(b=>b.mine).sort((a,b)=>a.date<b.date?1:-1);
+  return `<h2>My requests</h2>${m.length?m.map(b=>bookingCard(b,false)).join(''):'<div class="card mu">You have not requested anything yet.</div>'}`;
+}
+function admView(){
+  const pend=S.bk.filter(b=>b.status==='pending'),rest=S.bk.filter(b=>b.status!=='pending').sort((a,b)=>a.date<b.date?1:-1);
+  return `<h2>Waiting for you (${pend.length})</h2>${pend.length?pend.map(b=>bookingCard(b,true)).join(''):'<div class="card mu">No pending requests.</div>'}
+  <h2>Venues</h2>${S.venues.map(v=>`<div class="card"><div class="row"><div><b>${esc(v.name)}</b><div class="mu">${v.capacity?'Seats '+esc(v.capacity):'No capacity set'}</div></div></div><div class="acts"><button class="btn sm" data-a="vedit" data-id="${v.id}">Edit</button><button class="btn bad sm" data-a="vdel" data-id="${v.id}">Remove</button></div></div>`).join('')}
+  <div class="card"><label style="margin-top:0">Add a venue</label><div class="two"><input id="vn" placeholder="Name"><input id="vc" inputmode="numeric" placeholder="Seats (optional)"></div><div class="acts"><button class="btn pr sm" data-a="vadd">Add venue</button></div></div>
+  <h2>All bookings</h2>${rest.length?rest.map(b=>bookingCard(b,true)).join(''):'<div class="card mu">Nothing yet.</div>'}`;
+}
+function setView(){
+  const seg=(k,a,b)=>`<div class="seg"><button class="${P[k]===a[0]?'on':''}" data-a="pref" data-k="${k}" data-id="${a[0]}">${a[1]}</button><button class="${P[k]===b[0]?'on':''}" data-a="pref" data-k="${k}" data-id="${b[0]}">${b[1]}</button></div>`;
+  return `<h2>Settings</h2><div class="card"><b>Button bar</b><p class="mu">Put the menu where your thumb reaches.</p>${seg('nav',['top','Top'],['bottom','Bottom'])}
+  <b>Handedness</b><p class="mu">Moves the Book button and flips button order.</p>${seg('hand',['left','Left hand'],['right','Right hand'])}</div>
+  <div class="card"><div class="mu">Signed in as ${esc(S.email)}</div><div class="acts"><button class="btn bad sm" data-a="logout">Sign out</button></div></div>`;
+}
+function render(){
+  apply();
+  if(!S.token){$('#app').innerHTML=loginHTML();return}
+  const items=[['cal','&#128197;','Calendar']];
+  if(S.role==='admin')items.push(['adm','&#128737;','Admin']);else items.push(['mine','&#129534;','Mine']);
+  items.push(['set','&#9881;','Settings']);
+  const v={cal:calView,mine:mineView,adm:admView,set:setView}[S.view]||calView;
+  $('#app').innerHTML=`<header><h1>NMAMIT Bookings<small>${S.role==='admin'?'Admin':esc(S.email)}</small></h1></header>
+  <main>${v()}</main><nav>${items.map(i=>`<button class="${S.view===i[0]?'on':''}" data-a="view" data-id="${i[0]}"><span>${i[1]}</span>${i[2]}</button>`).join('')}</nav>
+  <button class="fab" data-a="book">+ Book</button>`;
+}
+
+// ---------- booking sheet ----------
+function sheet(html){const d=document.createElement('div');d.className='sheet';d.innerHTML='<div>'+html+'</div>';d.onclick=e=>{if(e.target===d)d.remove()};document.body.appendChild(d);return d}
+function bookSheet(){
+  if(!S.venues.length)return toast('No venues yet.');
+  const s=sheet(`<h2 style="margin-top:0">Request a booking</h2>
+  <label>Venue</label><select id="bv">${S.venues.map(v=>`<option value="${v.id}" ${S.f===v.id?'selected':''}>${esc(v.name)}</option>`).join('')}</select>
+  <label>Event name</label><input id="bt" maxlength="120" placeholder="e.g. Tech talk">
+  <label>Date</label><input id="bd" type="date" min="${iso(new Date())}" value="${S.sel<iso(new Date())?iso(new Date()):S.sel}">
+  <div class="two"><div><label>From</label><input id="bs" type="time" value="09:00"></div><div><label>To</label><input id="be" type="time" value="10:00"></div></div>
+  <div class="btns"><button class="btn" data-a="close">Cancel</button><button class="btn pr" data-a="send">${S.role==='admin'?'Book now':'Send request'}</button></div>`);
+}
+
+// ---------- actions ----------
+const acts={
+  async tab(e,id){S.tab=id;render()},
+  async sendCode(){const m=$('#em').value.trim().toLowerCase();S.mail=m;await api('sendCode',{email:m});S.step='code';toast('Code sent. Check your email.');render()},
+  async back(){S.step='mail';render()},
+  async verify(){const j=await api('verifyCode',{email:S.mail,code:$('#cd').value});S.token=j.token;localStorage.setItem('tok',j.token);await load()},
+  async adminLogin(){const j=await api('adminLogin',{username:$('#au').value.trim(),password:$('#ap').value});S.token=j.token;localStorage.setItem('tok',j.token);S.view='cal';await load()},
+  async logout(){logout()},
+  async view(e,id){S.view=id;render()},
+  async day(e,id){S.sel=id;render()},
+  async filter(e,id){S.f=id;render()},
+  async mon(e,id){S.m.setMonth(S.m.getMonth()+Number(id));render()},
+  async pref(e,id){setPref(e.dataset.k,id)},
+  async book(){bookSheet()},
+  async close(e){e.closest('.sheet').remove()},
+  async send(e){
+    const r=await api('request',{venueId:$('#bv').value,title:$('#bt').value,date:$('#bd').value,start:$('#bs').value,end:$('#be').value});
+    e.closest('.sheet').remove();toast(r.status==='approved'?'Booked.':'Request sent. An admin will review it.');await load()},
+  async cancel(e,id){if(!confirm('Remove this booking?'))return;await api('cancel',{id});toast('Removed');await load()},
+  async decide(e,id){await api('decide',{id,status:e.da
