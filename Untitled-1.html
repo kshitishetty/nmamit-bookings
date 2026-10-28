@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NMAMIT Bookings</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--bg:#f4f6fb;--c:#fff;--t:#1d2433;--m:#6b7488;--p:#4f46e5;--ok:#16a34a;--wa:#d97706;--no:#dc2626;--r:16px}
+@media(prefers-color-scheme:dark){:root{--bg:#10131c;--c:#1b2030;--t:#eef1f8;--m:#98a2b8;--p:#818cf8}}
+*{box-sizing:border-box}body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--t);padding:0 12px calc(86px + env(safe-area-inset-bottom)) }
+body.top{padding:calc(80px + env(safe-area-inset-top)) 12px 90px}
+h1{font-size:20px;margin:14px 4px}h2{font-size:17px;margin:16px 4px 8px}
+.card{background:var(--c);border-radius:var(--r);padding:14px;margin:10px 0;box-shadow:0 1px 6px #0001}
+button,input,select{font:inherit;color:inherit;border-radius:12px;border:1px solid #8884;background:var(--c);min-height:46px;padding:0 12px}
+input,select{width:100%;margin:4px 0 10px}label{font-size:13px;color:var(--m)}
+.pri{background:var(--p);color:#fff;border:0;font-weight:600;width:100%}
+.ok{background:var(--ok);color:#fff;border:0}.no{background:var(--no);color:#fff;border:0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:4px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:var(--c);box-shadow:0 -2px 12px #0002;z-index:5}
+body.top nav{bottom:auto;top:0;padding:calc(8px + env(safe-area-inset-top)) 8px 8px;box-shadow:0 2px 12px #0002}
+body.left nav{flex-direction:row-reverse}
+nav button{flex:1;border:0;background:none;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;color:var(--m)}
+nav button span{font-size:22px}nav button.on{color:var(--p);background:#4f46e51a;font-weight:700}
+.mh{display:flex;align-items:center;justify-content:space-between;margin:6px 0}.mh button{width:46px}
+.g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.g i{font-style:normal;color:var(--m);font-size:12px}
+.d{position:relative;padding:0;min-height:48px;border:0;background:var(--bg)}.d.td{outline:2px solid var(--p)}.d.sel{background:var(--p);color:#fff}
+.d s{text-decoration:none;position:absolute;right:3px;top:2px;font-size:10px;border-radius:8px;padding:0 5px;color:#fff;background:var(--wa)}.d s.a{background:var(--ok)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.chip{font-size:12px;padding:2px 10px;border-radius:20px;color:#fff;background:var(--wa)}.chip.Approved{background:var(--ok)}.chip.Blocked{background:var(--no)}
+.sm{min-height:40px}.seg{display:flex;gap:8px}.seg button{flex:1}.seg .on{background:var(--p);color:#fff;border:0}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:100px;background:#111;color:#fff;padding:10px 16px;border-radius:20px;z-index:9;display:none}
+body.top #toast{bottom:20px}
+#fab{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));right:16px;width:58px;height:58px;border-radius:50%;font-size:28px;background:var(--p);color:#fff;border:0;box-shadow:0 4px 14px #0004;z-index:4}
+body.left #fab{right:auto;left:16px}body.top #fab{bottom:20px}
+.muted{color:var(--m);font-size:14px}
+</style></head><body>
+<h1>🏛️ NMAMIT Bookings</h1>
+<main id="v"></main>
+<button id="fab" onclick="go('book')" aria-label="New booking">+</button>
+<nav id="bar"></nav><div id="toast"></div>
+<script>
+/* ===== SETUP: paste your values after deploying Apps Script (see steps). Leave API empty for demo mode. ===== */
+const CFG={API:'https://script.google.com/macros/s/AKfycbzWBnxhGpxzlcIGr6NAhU3UlTQy9txc-aDGNlAWJk8IkTi59G0P0RTasOUczmU8gMrf/exec',CLIENT_ID:'144021398890-iruogovndsal742054mkov5vg3kdbtr4.apps.googleusercontent.com'};
+const VEN=['Sambhram','Shambhavi','Sadananda','Amphitheatre','Phalguni','Abhyuday Hall','Conference Room','Vista Lab'];
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(2,'0'),ds=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>ds(new Date());
+const okMail=e=>/@(nmamit|nitte)\.in$/i.test(e||'');
+let S=JSON.parse(localStorage.ui||'{"hand":"right","bar":"bottom"}'),user=JSON.parse(sessionStorage.u||'null'),adm=sessionStorage.a||'',
+D={venues:[],bookings:[]},view='cal',cur=new Date(),sel=today(),fv='',atab='req';
+
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2800)}
+/* ---- backend: Apps Script, or local demo ---- */
+async function api(a,d={}){
+ if(!CFG.API)return local(a,d);
+ const r=await fetch(CFG.API,{method:'POST',body:JSON.stringify({action:a,token:user&&user.token,admin:adm,...d})});
+ const j=await r.json();
+ if(j.error){if(j.error=='auth'){user=null;sessionStorage.removeItem('u');render();throw Error('Please sign in again')}
+  if(j.error=='admin'){adm='';sessionStorage.removeItem('a');render();throw Error('Admin session expired')}throw Error(j.error)}
+ return j}
+function local(a,d){
+ const db=JSON.parse(localStorage.db||'null')||{venues:VEN.map((n,i)=>({id:'v'+i,name:n,capacity:''})),bookings:[]};
+ const save=()=>localStorage.db=JSON.stringify(db),id=()=>Math.random().toString(36).slice(2,9);
+ if(a=='list')return db;
+ if(a=='mine')return{bookings:db.bookings.filter(b=>b.email==user.email)};
+ if(a=='login'){if(d.u=='admin'&&d.p=='admin123')return{admin:'demo'};throw Error('Wrong username or password')}
+ if(a=='book'){if(d.start>=d.end)throw Error('End time must be after start');
+  if(db.bookings.some(b=>b.venue==d.venue&&b.date==d.date&&b.status=='Approved'&&d.start<b.end&&d.end>b.start))throw Error('That slot is already taken');
+  db.bookings.push({id:id(),...d,email:user.email,status:'Pending'});save();return{}}
+ if(a=='decide'){const b=db.bookings.find(b=>b.id==d.id);
+  if(d.status=='Approved'&&db.bookings.some(x=>x!=b&&x.venue==b.venue&&x.date==b.date&&x.status=='Approved'&&b.start<x.end&&b.end>x.start))throw Error('Conflicts with an approved booking');
+  b.status=d.status;save();return{}}
+ if(a=='vsave'){const v=d.id&&db.venues.find(v=>v.id==d.id);if(v){db.bookings.forEach(b=>{if(b.venue==v.name)b.venue=d.name});v.name=d.name;v.capacity=d.capacity}else db.venues.push({id:id(),name:d.name,capacity:d.capacity});save();return{}}
+ if(a=='vdel'){db.venues=db.venues.filter(v=>v.id!=d.id);save();return{}}}
+async function load(){try{D=await api('list');if(!fv||!D.venues.some(v=>v.name==fv))fv=''}catch(e){toast(e.message)}render()}
+
+/* ---- sign in ---- */
+function gate(){
+ if(user)return'';
+ return`<div class="card"><b>Sign in with your college email</b><p class="muted">Only @nmamit.in and @nitte.in accounts can book.</p>`+
+ (CFG.CLIENT_ID?`<div id="gbtn"></div>`:`<label>Demo mode — enter your college email</label><input id="em" type="email" placeholder="name@nmamit.in"><input id="nm" placeholder="Your name"><button class="pri" onclick="demoIn()">Continue</button>`)+`</div>`}
+function demoIn(){const e=$('#em').value.trim().toLowerCase();if(!okMail(e))return toast('Use an @nmamit.in or @nitte.in email');setUser({email:e,name:$('#nm').value||e.split('@')[0],token:''})}
+function setUser(u){user=u;sessionStorage.u=JSON.stringify(u);render()}
+function gcb(r){try{const p=JSON.parse(decodeURIComponent(escape(atob(r.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));
+ if(!okMail(p.email))return toast('Please use your @nmamit.in or @nitte.in account');setUser({email:p.email,name:p.name||p.email,token:r.credential})}catch(e){toast('Sign-in failed')}}
+function initG(){if(!CFG.CLIENT_ID||user||!$('#gbtn'))return;
+ if(!window.google){return setTimeout(initG,400)}
+ google.accounts.id.initialize({client_id:CFG.CLIENT_ID,callback:gcb,hd:undefined});google.accounts.id.renderButton($('#gbtn'),{theme:'filled_blue',size:'large',width:260})}
+function signout(){user=null;sessionStorage.removeItem('u');render()}
+
+/* ---- views ---- */
+const NAV=[['cal','📅','Calendar'],['book','➕','Book'],['mine','🧾','Mine'],['admin','🛡️','Admin'],['set','⚙️','Settings']];
+function go(v){view=v;render();scrollTo(0,0)}
+const bk=d=>D.bookings.filter(b=>b.date==d&&b.status!='Blocked'&&(!fv||b.venue==fv));
+function vCal(){
+ const y=cur.getFullYear(),m=cur.getMonth(),f=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate();
+ let h=`<select onchange="fv=this.value;render()"><option value="">All venues</option>${D.venues.map(v=>`<option ${v.name==fv?'selected':''}>${esc(v.name)}</option>`).join('')}</select>
+ <div class="card"><div class="mh"><button onclick="mv(-1)">‹</button><b>${cur.toLocaleString('en',{month:'long',year:'numeric'})}</b><button onclick="mv(1)">›</button></div><div class="g">`+[...'SMTWTFS'].map(x=>`<i>${x}</i>`).join('')+'<u></u>'.repeat(f);
+ for(let i=1;i<=n;i++){const k=`${y}-${pad(m+1)}-${pad(i)}`,b=bk(k);
+  h+=`<button class="d ${k==sel?'sel':''} ${k==today()?'td':''}" onclick="sel='${k}';render()">${i}${b.length?`<s class="${b.some(x=>x.status=='Approved')?'a':''}">${b.length}</s>`:''}</button>`}
+ h+=`</div><p class="muted">🟢 approved &nbsp; 🟠 awaiting approval</p></div><h2>${new Date(sel+'T00:00').toDateString()}</h2>`;
+ const l=bk(sel).sort((a,b)=>a.start.localeCompare(b.start));
+ h+=l.length?l.map(b=>`<div class="card"><div class="row"><b>${esc(b.start)}–${esc(b.end)} · ${esc(b.venue)}</b><span class="chip ${b.status}">${b.status}</span></div>${esc(b.title)}</div>`).join(''):'<div class="card muted">Nothing booked — this day is free 🎉</div>';
+ return h+`<button class="pri" onclick="go('book')">Book this day</button>`}
+function mv(x){cur=new Date(cur.getFullYear(),cur.getMonth()+x,1);render()}
+function vBook(){
+ if(!user)return gate();
+ return`<div class="card"><label>Venue</label><select id="bv">${D.venues.map(v=>`<option>${esc(v.name)}</option>`).join('')}</select>
+ <label>Date</label><input id="bd" type="date" min="${today()}" value="${sel<today()?today():sel}">
+ <div class="row"><div style="flex:1"><label>Start</label><input id="bs" type="time" value="09:00"></div><div style="flex:1"><label>End</label><input id="be" type="time" value="10:00"></div></div>
+ <label>Event title / purpose</label><input id="bt" maxlength="100" placeholder="e.g. Tech club orientation">
+ <button class="pri" onclick="submitB()">Send request</button><p class="muted">An admin will approve or decline your request.</p></div>`}
+async function submitB(){const d={venue:$('#bv').value,date:$('#bd').value,start:$('#bs').value,end:$('#be').value,title:$('#bt').value.trim(),name:user.name};
+ if(!d.date||!d.start||!d.end||!d.title)return toast('Please fill all fields');
+ try{await api('book',d);toast('Request sent ✅');sel=d.date;cur=new Date(d.date+'T00:00');await load();go('mine')}catch(e){toast(e.message)}}
+let mineL=[];
+async function vMine(){
+ if(!user){$('#v').innerHTML=gate();return initG()}
+ try{mineL=(await api('mine')).bookings}catch(e){return toast(e.message)}
+ $('#v').innerHTML=mineL.length?mineL.sort((a,b)=>b.date.localeCompare(a.date)).map(b=>`<div class="card"><div class="row"><b>${esc(b.venue)}</b><span class="chip ${b.status}">${b.status}</span></div>${esc(b.date)} · ${esc(b.start)}–${esc(b.end)}<br>${esc(b.title)}</div>`).join(''):'<div class="card muted">No bookings yet.</div>'}
+function vAdmin(){
+ if(!adm)return`<div class="card"><b>Admin sign-in</b><label>Username</label><input id="au" autocapitalize="off"><label>Password</label><input id="ap" type="password"><button class="pri" onclick="aLogin()">Sign in</button></div>`;
+ let h=`<div class="seg"><button class="${atab=='req'?'on':''}" onclick="atab='req';render()">Requests</button><button class="${atab=='ven'?'on':''}" onclick="atab='ven';render()">Venues</button><button onclick="adm='';sessionStorage.removeItem('a');render()">Log out</button></div>`;
+ if(atab=='req'){const l=[...D.bookings].sort((a,b)=>(a.status=='Pending'?0:1)-(b.status=='Pending'?0:1)||a.date.localeCompare(b.date));
+  h+=l.length?l.map(b=>`<div class="card"><div class="row"><b>${esc(b.venue)}</b><span class="chip ${b.status}">${b.status}</span></div>${esc(b.date)} · ${esc(b.start)}–${esc(b.end)}<br>${esc(b.title)}<br><span class="muted">${esc(b.name||'')} ${esc(b.email||'')}</span>
+  <div class="seg" style="margin-top:8px"><button class="ok sm" onclick="dec('${b.id}','Approved')">Accept</button><button class="no sm" onclick="dec('${b.id}','Blocked')">Block</button></div></div>`).join(''):'<div class="card muted">No requests.</div>'}
+ else h+=D.venues.map(v=>`<div class="card"><input id="n${v.id}" value="${esc(v.name)}"><input id="c${v.id}" type="number" placeholder="Capacity (optional)" value="${esc(v.capacity)}">
+  <div class="seg"><button class="pri sm" onclick="vs('${v.id}')">Save</button><button class="no sm" onclick="vd('${v.id}')">Remove</button></div></div>`).join('')+
+  `<div class="card"><b>Add venue</b><input id="nn" placeholder="Venue name"><input id="nc" type="number" placeholder="Capacity (optional)"><button class="pri" onclick="vs('')">Add venue</button></div>`;
+ return h}
+async function aLogin(){try{const r=await api('login',{u:$('#au').value.trim(),p:$('#ap').value});adm=r.admin;sessionStorage.a=adm;await load()}catch(e){toast(e.message)}}
+async function dec(id,status){try{await api('decide',{id,status});toast(status);await load()}catch(e){toast(e.message)}}
+async function vs(id){const name=$(id?'#n'+id:'#nn').value.trim();if(!name)return toast('Enter a name');
+ try{await api('vsave',{id,name,capacity:$(id?'#c'+id:'#nc').value});toast('Saved');await load()}catch(e){toast(e.message)}}
+async function vd(id){if(!confirm('Remove this venue?'))return;try{await api('vdel',{id});await load()}catch(e){toast(e.message)}}
+function vSet(){
+ const seg=(k,o)=>`<div class="seg">${o.map(([v,t])=>`<button class="${S[k]==v?'on':''}" onclick="S.${k}='${v}';localStorage.ui=JSON.stringify(S);render()">${t}</button>`).join('')}</div>`;
+ return`<div class="card"><b>Your hand</b><p class="muted">Moves the + button and reverses the menu order so it's easy to reach.</p>${seg('hand',[['left','🤚 Left'],['right','Right ✋']])}</div>
+ <div class="card"><b>Menu bar position</b>${seg('bar',[['top','⬆ Top'],['bottom','⬇ Bottom']])}</div>
+ <div class="card">${user?`Signed in as <b>${esc(user.email)}</b><br><br><button onclick="signout()">Sign out</button>`:gate()}</div>
+ ${CFG.API?'':'<p class="muted">Demo mode: data is stored only in this browser. Admin login: admin / admin123.</p>'}`}
+function render(){
+ document.body.className=S.bar+' '+S.hand;
+ $('#bar').innerHTML=NAV.map(([k,i,t])=>`<button class="${view==k?'on':''}" onclick="go('${k}')"><span>${i}</span>${t}</button>`).join('');
+ $('#fab').style.display=view=='book'?'none':'block';
+ if(view=='mine')vMine();else $('#v').innerHTML={cal:vCal,book:vBook,admin:vAdmin,set:vSet}[view]();
+ initG()}
+render();load();
+</script></body></html>
